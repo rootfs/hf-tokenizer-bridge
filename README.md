@@ -1,73 +1,38 @@
 # Hugging Face Tokenizer Bridge
 
-This project provides a C bridge between the Hugging Face tokenizers library (Rust) and other programming languages. Currently, it supports Golang integration.
+A bridge between Hugging Face tokenizers (Rust) and Golang, allowing you to use HF tokenizers in Go applications.
 
-## Project Structure
+## Quick Start
 
+### Build
+
+```bash
+# Build everything (Rust library and Go example)
+make all
+
+# Or build just the components you need
+make rust-lib   # Build only the Rust library
+make go-lib     # Build the library and copy it for Go
+make example    # Build the Go example app
 ```
-hf-tokenizer-bridge/
-├── src/                # Rust source code for the bridge
-├── golang-tokenizer-bridge/    # Golang bindings
-│   ├── tokenizer/     # Tokenizer package
-│   │   ├── lib/       # Shared library files
-│   │   ├── tokenizer.go   # Go bindings
-│   │   └── hf_tokenizer_bridge.h   # C header
-├── example/           # Example applications
-│   ├── golang/        # Golang example
-│   └── models/        # Tokenizer models
+
+### Test
+
+```bash
+# Test the Rust implementation with default model (bert-base-uncased)
+make test
+
+# Test with a specific model
+make test MODEL=bert-base-cased
+
+# Test the Go bindings
+make test-go
+
+# Test both implementations
+make test-all
 ```
 
-## Building the Rust Library
-
-### Prerequisites
-
-- Rust and Cargo (1.50+)
-- C compiler (gcc/clang)
-
-### Build Steps
-
-1. Clone the repository:
-   ```
-   git clone https://github.com/rootfs/hf-tokenizer-bridge.git
-   cd hf-tokenizer-bridge
-   ```
-
-2. Build the Rust library:
-   ```
-   cargo build --release
-   ```
-
-3. Copy the shared library to the Golang bindings directory:
-   ```
-   mkdir -p golang-tokenizer-bridge/tokenizer/lib
-   cp target/release/libhf_tokenizer_bridge.so golang-tokenizer-bridge/tokenizer/lib/
-   ```
-
-## Using the Golang Bindings
-
-### Prerequisites
-
-- Go 1.23+
-
-### Setup
-
-1. Import the tokenizer package in your Go code:
-   ```go
-   import "github.com/rootfs/golang-tokenizer-bridge/tokenizer"
-   ```
-
-2. In your go.mod file, add a replace directive to use the local version:
-   ```
-   module your-module-name
-
-   go 1.23
-
-   require github.com/rootfs/golang-tokenizer-bridge v0.0.0-unpublished
-
-   replace github.com/rootfs/golang-tokenizer-bridge => /path/to/hf-tokenizer-bridge/golang-tokenizer-bridge
-   ```
-
-### Example Usage
+### Usage Example (Go)
 
 ```go
 package main
@@ -79,7 +44,12 @@ import (
 
 func main() {
     text := "Hello, world! This is a test."
+    
+    // Use a local tokenizer file
     modelPath := "/path/to/tokenizer.json"
+    
+    // Or use a HuggingFace model name
+    // modelPath := "bert-base-uncased"
     
     result, err := tokenizer.Tokenize(text, modelPath)
     if err != nil {
@@ -92,78 +62,27 @@ func main() {
 }
 ```
 
-### Running Your Go Application
+### Using Models with Authentication
 
-There are several ways to ensure your Go application can find the shared library:
+For gated models like Meta-Llama:
 
-1. Set the LD_LIBRARY_PATH environment variable:
-   ```
-   LD_LIBRARY_PATH=/path/to/hf-tokenizer-bridge/golang-tokenizer-bridge/tokenizer/lib go run main.go
-   ```
+```go
+// Set HF_TOKEN environment variable
+os.Setenv("HF_TOKEN", "your_huggingface_token")
 
-2. Use rpath when building:
-   ```
-   CGO_LDFLAGS="-Wl,-rpath,/path/to/hf-tokenizer-bridge/golang-tokenizer-bridge/tokenizer/lib" go build -o myapp
-   ```
-
-3. Install the library system-wide:
-   ```
-   sudo cp /path/to/hf-tokenizer-bridge/golang-tokenizer-bridge/tokenizer/lib/libhf_tokenizer_bridge.so /usr/local/lib/
-   sudo ldconfig
-   ```
-
-## Example Makefile
-
-You can use this Makefile to simplify the build process:
-
-```makefile
-RUST_LIB_DIR := $(CURDIR)/target/release
-GO_LIB_DIR := $(CURDIR)/golang-tokenizer-bridge/tokenizer/lib
-EXAMPLE_DIR := $(CURDIR)/example/golang
-
-.PHONY: all clean rust-lib go-lib example run
-
-all: rust-lib go-lib example
-
-rust-lib:
-	cargo build --release
-
-go-lib: rust-lib
-	mkdir -p $(GO_LIB_DIR)
-	cp $(RUST_LIB_DIR)/libhf_tokenizer_bridge.so $(GO_LIB_DIR)/
-
-example: go-lib
-	cd $(EXAMPLE_DIR) && CGO_LDFLAGS="-Wl,-rpath,$(GO_LIB_DIR)" go build -o tokenizer-app
-
-run: example
-	cd $(EXAMPLE_DIR) && ./tokenizer-app
-
-clean:
-	cargo clean
-	rm -rf $(GO_LIB_DIR)
-	rm -f $(EXAMPLE_DIR)/tokenizer-app
+// Or use the direct function
+result, err := tokenizer.TokenizeWithToken(text, "meta-llama/Meta-Llama-3.1-8B-Instruct", "your_huggingface_token")
 ```
 
-## Downloading a Tokenizer Model
-
-You can download a pre-trained tokenizer model from Hugging Face:
+## Download a Model for Testing
 
 ```bash
-mkdir -p example/models
-curl -L https://huggingface.co/bert-base-uncased/resolve/main/tokenizer.json \
-     -o example/models/tokenizer.json
+# Download a test model
+make download-model
 ```
 
-## Troubleshooting
+## Clean Up
 
-1. **Shared library not found**: Ensure the `libhf_tokenizer_bridge.so` file is correctly built and accessible through one of the methods described above.
-
-2. **Tokenizer model not found**: Make sure the path to your tokenizer.json file is correct.
-
-3. **Segmentation fault**: This might occur if the tokenizer model file is missing or invalid, or if there's an issue with the library initialization.
-
-4. **Go build errors**: If you get CGO-related errors, make sure you have a C compiler installed and that the header file (`hf_tokenizer_bridge.h`) is accessible.
-
-## License
-
-[MIT License](LICENSE) 
+```bash
+make clean
+``` 

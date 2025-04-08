@@ -8,6 +8,7 @@ extern "C" {
 #endif
 
 char* tokenize_text(const char* text, const char* model_name);
+char* tokenize_text_with_token(const char* text, const char* model_name, const char* token);
 void free_string(char* s);
 
 #ifdef __cplusplus
